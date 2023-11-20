@@ -1,0 +1,24 @@
+{
+  "name": "reedsolomon",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "npx tsc --watch",
+    "start": "npx tsc && node dist/main.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@ronomon/reed-solomon": "^6.0.0",
+    "@subspace/reed-solomon-erasure.wasm": "^0.2.5",
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7",
+    "reedsolomon": "^1.0.0",
+    "wasm-reed-solomon-erasure": "^0.2.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2"
+  }
+}
