@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.shardsToBuffer = exports.bufferToShards = void 0;
+exports.splitter = void 0;
 const wasm_reed_solomon_erasure_1 = require("wasm-reed-solomon-erasure");
-const bufferToShards = (input, shardsCount, parityShards) => {
+const splitter = (input, shardsCount, parityShards) => {
     if (parityShards < 1)
         throw new Error('Number of parity shards must be greater than 0.');
-    if (parityShards > shardsCount)
+    if (parityShards >= shardsCount)
         throw new Error('Number of parity shards must be lower than data shards number.');
     const dataShards = shardsCount - parityShards;
     console.log("Input : ", input.length);
@@ -22,18 +22,5 @@ const bufferToShards = (input, shardsCount, parityShards) => {
     }
     return (0, wasm_reed_solomon_erasure_1.encode)(shardData, parityShards);
 };
-exports.bufferToShards = bufferToShards;
-const shardsToBuffer = (shards, parityShards, deadSharedIndexes) => {
-    const results = (0, wasm_reed_solomon_erasure_1.reconstruct)(shards, parityShards, new Uint32Array());
-    const flatten = [];
-    const dataShards = shards.length - parityShards;
-    for (let i = 0; i < dataShards; i++) {
-        for (const result of results[i]) {
-            flatten.push(result);
-        }
-        ;
-    }
-    return Buffer.from(flatten);
-};
-exports.shardsToBuffer = shardsToBuffer;
+exports.splitter = splitter;
 //# sourceMappingURL=splitter.js.map

@@ -2,27 +2,33 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const splitter_1 = require("./reed-solomon/splitter");
 const fs = require("fs");
-const path = require("path");
-const data_shard_number = 10;
-const parity_shard_number = 5;
-const file_name = './Crypto101.pdf';
-cleaner('./');
+const crypto = require("crypto");
+const reconstruct_1 = require("./reed-solomon/reconstruct");
+const cleaner_1 = require("./reed-solomon/cleaner");
+const data_shard_number = 30;
+const shard_minimum = 10;
+const parity_shard_number = data_shard_number - shard_minimum;
+const path = './files';
+const file_name = 'videoplayback.mp4';
+(0, cleaner_1.cleaner)(path);
 const ext = file_name.substring(file_name.lastIndexOf('.') + 1);
-split_process(file_name);
-recovery_process(ext);
-const fileContent = fs.readFileSync(`./restore.${ext}`);
+split_process(`${path}/${file_name}`);
+const file = fs.readFileSync(`${path}/${file_name}`);
+const eight_correction = file.length % 8;
+recovery_process(ext, shard_minimum);
+const fileContent = fs.readFileSync(`${path}/restore.${ext}`);
 const explore_number = 10;
-compare_files([file_name, `./restore.${ext}`], explore_number, fileContent.length - explore_number);
+compare_files([`${path}/${file_name}`, `${path}/restore.${ext}`], explore_number, fileContent.length - explore_number);
 function split_process(file_name) {
     // SPLIT
     const fileContent = fs.readFileSync(file_name);
     const input = Buffer.from(fileContent);
-    const shards = (0, splitter_1.bufferToShards)(input, data_shard_number, parity_shard_number);
+    const shards = (0, splitter_1.splitter)(input, data_shard_number, parity_shard_number);
     for (let i = 0; i < data_shard_number; i++) {
-        const shardFilePath = `shard_${i}.dat`;
-        fs.writeFileSync(shardFilePath, shards[i]);
+        fs.writeFileSync(`${path}/shard_${i}.dat`, shards[i]);
     }
     console.log("Shards : ", shards.length);
+    console.log("Parity : ", parity_shard_number);
     let shards_length = 0;
     for (let index = 0; index < shards.length; index++) {
         console.log(`Shard ${index} : ${shards[index].length}`);
@@ -31,42 +37,40 @@ function split_process(file_name) {
     console.log("Total : ", shards_length);
     console.log('% : ', Math.ceil(shards_length / input.length * 100));
 }
-function recovery_process(ext) {
+function recovery_process(ext, keeped_shard_number = data_shard_number) {
     // RECOVERY
     let recovery_array = [];
+    let shard_length = 0;
     for (let i = 0; i < data_shard_number; i++) {
-        const fileContent = fs.readFileSync(`./shard_${i}.dat`);
-        recovery_array.push(Uint8Array.from(fileContent));
+        if (i < keeped_shard_number) {
+            const fileContent = fs.readFileSync(`${path}/shard_${i}.dat`);
+            shard_length = fileContent.length;
+            recovery_array.push(Uint8Array.from(fileContent));
+        }
+        else {
+            console.log(`erase shard ${i}`);
+            recovery_array.push(Uint8Array.from(Buffer.allocUnsafe(shard_length)));
+        }
     }
-    const restoredBuffer = (0, splitter_1.shardsToBuffer)(recovery_array, parity_shard_number, []);
-    fs.writeFileSync(`restore.${ext}`, restoredBuffer);
-    console.log('Restore length : ', restoredBuffer.length);
+    const restoredBuffer = (0, reconstruct_1.rebuild)(recovery_array, parity_shard_number);
+    const correction = (restoredBuffer.length % 8 + 8 - eight_correction);
+    const new_buffer = restoredBuffer.slice(0, restoredBuffer.length - correction);
+    fs.writeFileSync(`${path}/restore.${ext}`, new_buffer);
+    console.log('Restore length : ', new_buffer.length);
 }
-function compare_files(files_url, len, start = 0) {
+function compare_files(file_list, len, start = 0) {
     const files = [];
-    for (let i = 0; i < files_url.length; i++) {
-        const fileContent = fs.readFileSync(files_url[i]);
+    for (let i = 0; i < file_list.length; i++) {
+        const fileContent = fs.readFileSync(`${file_list[i]}`);
         files.push(fileContent);
+        const hash = crypto.createHash('sha256');
+        hash.update(fileContent);
+        console.log(`File hash for ${file_list[i]} : \n${hash.digest('hex')}`);
     }
+    console.log(`\n`);
     for (let k = start; k < start + len; k++) {
         const values = files.map(subArray => (k < subArray.length ? subArray[k] : 'u'));
         console.log(`${k} | ${values.join(' | ')}`);
     }
-}
-function cleaner(directory) {
-    fs.readdir(directory, (err, files) => {
-        if (err)
-            throw err;
-        files.forEach(file => {
-            if (file.startsWith('shard') || file.startsWith('restore')) {
-                const filePath = path.join(directory, file);
-                fs.unlink(filePath, err => {
-                    if (err)
-                        throw err;
-                    console.log(`${file} a été supprimé.`);
-                });
-            }
-        });
-    });
 }
 //# sourceMappingURL=main.js.map
